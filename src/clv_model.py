@@ -29,18 +29,25 @@ from scipy.stats import pearsonr
 
 from utils.metrics import (
     absolute_percentage_error_values_nonzero,
+    compute_decile_lift,
     log_metrics,
     mean_absolute_error,
     mean_absolute_percentage_error_nonzero,
     median_absolute_percentage_error_nonzero,
     root_mean_squared_error,
     spearman_rank_correlation,
+    top_decile_lift_summary,
 )
 
 # How many of the worst-APE customers to save for manual inspection —
 # enough to spot a pattern (a handful of outliers vs. a systematic skew
 # across dozens of customers) without dumping the whole dataset.
 N_WORST_PREDICTIONS_TO_SAVE = 20
+
+# Standard business convention for a targeting/lift analysis; deciles
+# (not quintiles or ventiles) are the usual granularity for this kind of
+# "would targeting the top N% have worked" business metric.
+N_DECILES = 10
 
 matplotlib.use("Agg")  # headless: this script never opens an interactive window
 
@@ -210,6 +217,56 @@ def validate_predictions(predictions: pd.DataFrame, holdout_actuals: pd.DataFram
     return merged, metrics
 
 
+def compute_clv_decile_lift(merged: pd.DataFrame, n_deciles: int = N_DECILES) -> tuple[pd.DataFrame, dict]:
+    """Decile-lift analysis: same rank-quality signal as Spearman, expressed
+    as a business metric — what % of total actual holdout spend would
+    targeting only the top predicted decile have captured, vs. the 1/n_deciles
+    a random sample of the same size would capture in expectation.
+
+    Uses the full customer population (including zero-actual/churned
+    customers), unlike the APE-based metrics above — a decile-lift
+    analysis is about total spend captured, and a churned customer's $0
+    actual spend is real information for that (not an undefined ratio to
+    exclude, the way it is for percentage-error metrics).
+    """
+    decile_table = compute_decile_lift(
+        merged["holdout_actual_spend"].to_numpy(), merged["predicted_clv"].to_numpy(), n_deciles=n_deciles
+    )
+    summary = top_decile_lift_summary(decile_table, n_deciles=n_deciles)
+    return decile_table, summary
+
+
+def plot_decile_lift(decile_table: pd.DataFrame, summary: dict, output_path: Path) -> None:
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    n_deciles = len(decile_table)
+    random_pct = summary["random_decile_pct_of_actual_spend"]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    bars = ax.bar(
+        decile_table["decile"], decile_table["pct_of_total_actual_spend"] * 100,
+        color="steelblue", edgecolor="white",
+    )
+    bars[0].set_color("crimson")  # highlight the top decile — the one the headline number is about
+    ax.axhline(random_pct * 100, color="gray", linestyle="--", label=f"random {n_deciles}-way split ({random_pct:.0%})")
+    ax.set_xlabel("Decile (1 = highest predicted CLV)")
+    ax.set_ylabel("% of total actual holdout spend captured")
+    ax.set_title("CLV decile lift: predicted-value ranking vs. random targeting")
+    ax.set_xticks(decile_table["decile"])
+    ax.legend()
+    ax.text(
+        0.98, 0.95,
+        f"Top decile: {summary['top_decile_pct_of_actual_spend']:.1%} of spend "
+        f"({summary['lift_multiple']:.1f}x random)",
+        transform=ax.transAxes, ha="right", va="top", fontsize=9,
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.85),
+    )
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=150)
+    plt.close(fig)
+
+
 def identify_worst_predictions(merged: pd.DataFrame, top_n: int = N_WORST_PREDICTIONS_TO_SAVE) -> pd.DataFrame:
     """The top_n customers with the largest absolute percentage error, for manual inspection.
 
@@ -316,6 +373,10 @@ def run(
     worst_predictions = identify_worst_predictions(merged)
     worst_predictions.to_csv(output_dir / "clv_worst_predictions.csv", index=False)
 
+    decile_table, decile_lift_summary = compute_clv_decile_lift(merged)
+    decile_table.to_csv(output_dir / "clv_decile_lift.csv", index=False)
+    plot_decile_lift(decile_table, decile_lift_summary, plots_dir / "clv_decile_lift.png")
+
     log_metrics(
         stage="clv_model",
         metrics={
@@ -328,6 +389,7 @@ def run(
             "validation_discount_rate": discount_rate,
             "calibration_end": split_config["calibration_end"],
             "validation": validation_metrics,
+            "decile_lift": decile_lift_summary,
         },
         path=metrics_path,
     )
@@ -337,6 +399,9 @@ def run(
           f"MAPE(nonzero)={validation_metrics['mape_nonzero_actuals']:.1%}  "
           f"median APE={validation_metrics['median_ape_nonzero_actuals']:.1%}  "
           f"Spearman r={validation_metrics['spearman_correlation']:.3f}")
+    print(f"Top-decile capture: {decile_lift_summary['top_decile_pct_of_actual_spend']:.1%} of total actual "
+          f"holdout spend ({decile_lift_summary['lift_multiple']:.2f}x vs. random "
+          f"{decile_lift_summary['random_decile_pct_of_actual_spend']:.0%})")
 
 
 def main() -> None:

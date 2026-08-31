@@ -120,6 +120,22 @@ against actual holdout spend (undiscounted, to match holdout actuals):
   value considerably better than it predicts their exact spend, which
   matters more for a targeting use case (segmentation, campaign
   selection) than dollar-accurate forecasts do.
+- **Decile lift: the top predicted decile (10% of customers) captured
+  61.5% of total actual holdout spend — a 6.15x lift over the 10% a
+  random sample of the same size would capture in expectation.** Same
+  rank-quality signal as Spearman, expressed as a business metric
+  instead of a correlation coefficient: "if you'd targeted only the top
+  predicted decile, how much of total spend would you actually have
+  captured?" is the more directly actionable framing for a targeting
+  decision. Every decile below the first captures less than the one
+  above it — 11.9%, 10.8%, 4.5%, ... down to 0.7% for the bottom decile
+  (see `outputs/plots/clv_decile_lift.png` and
+  `outputs/clv_decile_lift.csv`, saved every run) — a monotonic,
+  well-behaved ranking, not one decile propping up an otherwise flat
+  curve. Unlike the APE-based metrics above, this uses the *full*
+  customer population including zero-actual (churned) customers — a
+  churned customer's £0 spend is real information for "how much total
+  spend did this decile capture," not an undefined ratio to exclude.
 - See `outputs/plots/clv_predicted_vs_actual.png`: the vertical stripe at
   x=0 is the ~48% of calibration customers who didn't purchase again in
   the holdout window — visible evidence the model over-predicts spend for
@@ -143,12 +159,16 @@ customer tails, not one systematic problem:
   itself is modest. These are two disjoint sets of customers, confirmed
   by comparing the top-APE and top-absolute-error tables directly.
 
-Takeaway for the writeup: report MAPE, median APE, and Spearman together,
-not MAPE alone — individual-level CLV prediction has legitimately high
-variance for customers with irregular purchase patterns, and Spearman's
-rank correlation (0.624) is the more decision-relevant number for
-targeting/prioritization use cases, where getting the ranking right
-matters more than dollar-exact forecasts.
+Takeaway for the writeup: report MAPE, median APE, Spearman, and decile
+lift together, not MAPE alone — individual-level CLV prediction has
+legitimately high variance for customers with irregular purchase
+patterns, while Spearman (0.624) and decile lift (6.15x) are the more
+decision-relevant numbers for targeting/prioritization use cases, where
+getting the ranking right matters more than dollar-exact forecasts.
+Decile lift is the one of the four that translates most directly into a
+business conversation — "targeting the top 10% by predicted value would
+have captured 61.5% of actual spend" needs no statistics background to
+interpret, unlike a correlation coefficient.
 
 ## Churn model results (real dataset)
 

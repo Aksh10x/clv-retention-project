@@ -109,6 +109,78 @@ def spearman_rank_correlation(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[f
     return float(result.statistic), float(result.pvalue)
 
 
+def compute_decile_lift(y_true: np.ndarray, y_pred: np.ndarray, n_deciles: int = 10):
+    """Rank customers by predicted value (descending) into equal-sized deciles,
+    and report what share of TOTAL actual spend each decile actually captured.
+
+    Same rank-quality signal as Spearman, expressed as a business metric
+    instead of a correlation coefficient: "if you'd targeted only the top
+    predicted decile, how much of total actual spend would you have
+    captured?" is a more directly actionable number for a targeting
+    decision than a correlation coefficient is.
+
+    Customers are split into deciles by POSITION after sorting (via
+    np.array_split), not via quantile bin edges on the raw predicted
+    values (e.g. pandas.qcut) — the latter throws on duplicate bin edges,
+    which is a real risk here: many low-frequency customers can receive
+    near-identical predicted CLV (Gamma-Gamma shrinks a sparse customer's
+    estimate toward the population mean), so tied predictions are
+    expected, not an edge case. Ties are broken by stable sort order
+    (original row order), which has no systematic direction, so this
+    doesn't inflate the reported lift.
+
+    Returns a pandas DataFrame (imported lazily — this module otherwise
+    depends only on numpy/scipy) with one row per decile, decile 1 =
+    highest predicted value, ordered so cumulative_pct_of_total_actual_spend
+    reaches 1.0 by decile n_deciles.
+    """
+    import pandas as pd
+
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.asarray(y_pred, dtype=float)
+    if y_true.size == 0:
+        raise ValueError("compute_decile_lift requires at least one customer")
+
+    total_actual = float(y_true.sum())
+    order = np.argsort(-y_pred, kind="stable")  # descending by predicted value
+    sorted_actual = y_true[order]
+    groups = np.array_split(np.arange(y_true.size), n_deciles)
+
+    rows = []
+    cumulative = 0.0
+    for i, idx in enumerate(groups):
+        decile_actual = float(sorted_actual[idx].sum())
+        pct = decile_actual / total_actual if total_actual > 0 else float("nan")
+        cumulative += pct
+        rows.append(
+            {
+                "decile": i + 1,
+                "n_customers": int(idx.size),
+                "total_actual_spend": decile_actual,
+                "pct_of_total_actual_spend": pct,
+                "cumulative_pct_of_total_actual_spend": cumulative,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def top_decile_lift_summary(decile_table, n_deciles: int = 10) -> dict:
+    """Top-decile capture rate vs. what a random 10% sample would capture (1/n_deciles), as a ratio.
+
+    A lift of e.g. 3.2x means the top predicted decile captured 3.2 times
+    more actual spend than an equal-sized random sample would be expected
+    to capture (a random sample captures its population share, 1/n_deciles,
+    in expectation, by definition).
+    """
+    top_pct = float(decile_table.iloc[0]["pct_of_total_actual_spend"])
+    random_pct = 1.0 / n_deciles
+    return {
+        "top_decile_pct_of_actual_spend": top_pct,
+        "random_decile_pct_of_actual_spend": random_pct,
+        "lift_multiple": top_pct / random_pct if random_pct > 0 else float("nan"),
+    }
+
+
 def log_metrics(stage: str, metrics: dict, path: Path) -> None:
     """Merge `metrics` under `stage` into the shared outputs/metrics.json file.
 

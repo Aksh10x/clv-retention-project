@@ -158,7 +158,10 @@ def synthetic_pipeline_outputs(tmp_path):
     # tiny placeholder PNGs for every chart the template embeds
     import matplotlib.pyplot as plt
 
-    for name in ["clv_predicted_vs_actual.png", "churn_shap_summary.png", "segmentation_k_selection.png"]:
+    for name in [
+        "clv_predicted_vs_actual.png", "clv_decile_lift.png",
+        "churn_shap_summary.png", "segmentation_k_selection.png",
+    ]:
         fig, ax = plt.subplots(figsize=(2, 2))
         ax.plot([0, 1], [0, 1])
         fig.savefig(plots_dir / name)
@@ -181,6 +184,10 @@ def synthetic_pipeline_outputs(tmp_path):
                 "median_ape_nonzero_actuals": 0.3, "spearman_correlation": 0.6,
             },
             "independence_check": {"pearson_correlation": 0.1, "warning_threshold": 0.3},
+            "decile_lift": {
+                "top_decile_pct_of_actual_spend": 0.55, "random_decile_pct_of_actual_spend": 0.1,
+                "lift_multiple": 5.5,
+            },
         },
         "churn_model": {
             "churn_rate": 0.5,

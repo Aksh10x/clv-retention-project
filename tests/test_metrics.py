@@ -5,12 +5,14 @@ import pytest
 
 from utils.metrics import (
     absolute_percentage_error_values_nonzero,
+    compute_decile_lift,
     log_metrics,
     mean_absolute_error,
     mean_absolute_percentage_error_nonzero,
     median_absolute_percentage_error_nonzero,
     root_mean_squared_error,
     spearman_rank_correlation,
+    top_decile_lift_summary,
 )
 
 
@@ -106,6 +108,81 @@ def test_spearman_inverse_rank_correlation():
 
     corr, _ = spearman_rank_correlation(y_true, y_pred)
     assert np.isclose(corr, -1.0)
+
+
+def test_compute_decile_lift_perfect_ranking_top_decile_captures_its_own_spend():
+    # 100 customers, actual spend equals predicted rank exactly (customer i
+    # has actual spend i, predicted i) -> top decile (highest predicted)
+    # should be customers 91..100, whose spend is the top 10 values.
+    y_true = np.arange(1, 101, dtype=float)
+    y_pred = np.arange(1, 101, dtype=float)
+
+    table = compute_decile_lift(y_true, y_pred, n_deciles=10)
+
+    assert len(table) == 10
+    assert table.iloc[0]["decile"] == 1
+    top_decile_actual = sum(range(91, 101))
+    assert table.iloc[0]["total_actual_spend"] == pytest.approx(top_decile_actual)
+    assert table.iloc[-1]["cumulative_pct_of_total_actual_spend"] == pytest.approx(1.0)
+
+
+def test_compute_decile_lift_random_predictions_approach_uniform_capture():
+    # if predicted value carries no information (pure noise, uncorrelated
+    # with actual), each decile should capture roughly 1/n_deciles of
+    # total spend -- not exactly, but not wildly skewed either.
+    rng = np.random.default_rng(0)
+    y_true = rng.exponential(scale=100.0, size=5000)
+    y_pred = rng.permutation(y_true.size).astype(float)  # unrelated ranking
+
+    table = compute_decile_lift(y_true, y_pred, n_deciles=10)
+    top_pct = table.iloc[0]["pct_of_total_actual_spend"]
+    assert 0.05 < top_pct < 0.20  # loosely centered on the 10% chance rate
+
+
+def test_compute_decile_lift_cumulative_reaches_one_and_deciles_partition_all_customers():
+    rng = np.random.default_rng(1)
+    y_true = rng.exponential(scale=50.0, size=997)  # not evenly divisible by 10, to test np.array_split
+    y_pred = rng.normal(size=997)
+
+    table = compute_decile_lift(y_true, y_pred, n_deciles=10)
+
+    assert table["n_customers"].sum() == 997
+    assert table.iloc[-1]["cumulative_pct_of_total_actual_spend"] == pytest.approx(1.0)
+    assert list(table["decile"]) == list(range(1, 11))
+
+
+def test_compute_decile_lift_handles_ties_in_predicted_value_via_stable_sort():
+    # many customers share the exact same predicted value (e.g. the
+    # population-average CLV given to sparse customers) -- must not raise,
+    # unlike pandas.qcut which errors on duplicate bin edges.
+    y_pred = np.array([5.0] * 50 + [1.0] * 50)  # ties within each half
+    y_true = np.arange(100, dtype=float)
+
+    table = compute_decile_lift(y_true, y_pred, n_deciles=10)
+    assert table["n_customers"].sum() == 100
+
+
+def test_top_decile_lift_summary_perfect_ranking_gives_max_lift():
+    y_true = np.arange(1, 101, dtype=float)
+    y_pred = np.arange(1, 101, dtype=float)
+    table = compute_decile_lift(y_true, y_pred, n_deciles=10)
+
+    summary = top_decile_lift_summary(table, n_deciles=10)
+    assert summary["random_decile_pct_of_actual_spend"] == pytest.approx(0.10)
+    assert summary["lift_multiple"] > 1.0  # perfect ranking beats random targeting
+    assert summary["top_decile_pct_of_actual_spend"] == pytest.approx(
+        summary["lift_multiple"] * summary["random_decile_pct_of_actual_spend"]
+    )
+
+
+def test_top_decile_lift_summary_no_signal_gives_lift_near_one():
+    rng = np.random.default_rng(2)
+    y_true = rng.exponential(scale=100.0, size=5000)
+    y_pred = rng.permutation(y_true.size).astype(float)
+    table = compute_decile_lift(y_true, y_pred, n_deciles=10)
+
+    summary = top_decile_lift_summary(table, n_deciles=10)
+    assert 0.5 < summary["lift_multiple"] < 2.0  # no ranking signal -> lift near 1x
 
 
 def test_log_metrics_merges_stages_without_clobbering(tmp_path):

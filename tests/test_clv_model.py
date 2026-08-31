@@ -4,6 +4,7 @@ import pytest
 
 from clv_model import (
     check_independence,
+    compute_clv_decile_lift,
     fit_bgnbd,
     fit_gamma_gamma,
     identify_worst_predictions,
@@ -64,6 +65,28 @@ def test_validate_predictions_metrics_match_manual_calc():
 
     assert metrics["mae"] == pytest.approx((10 + 20) / 2)
     assert metrics["mape_nonzero_actuals"] == pytest.approx((0.10 + 0.10) / 2)
+
+
+def test_compute_clv_decile_lift_includes_zero_actual_churned_customers():
+    # unlike the APE-based metrics, decile lift must NOT exclude churned
+    # (zero-actual) customers -- their $0 spend is real signal for total
+    # spend captured, not an undefined ratio.
+    predictions = pd.DataFrame(
+        {"customer_id": range(1, 21), "predicted_clv": list(range(20, 0, -1))}  # descending predicted value
+    )
+    holdout_actuals = pd.DataFrame(
+        {"customer_id": range(1, 11), "holdout_actual_spend": [100.0] * 10}  # only half of customers spent
+    )
+    merged, _ = validate_predictions(predictions, holdout_actuals)
+
+    decile_table, summary = compute_clv_decile_lift(merged, n_deciles=10)
+
+    assert decile_table["n_customers"].sum() == 20  # all 20 customers included, not just the 10 spenders
+    # top predicted decile = customers 1-2 (highest predicted_clv, 20 and 19),
+    # who are also among the actual spenders (customer_id 1-10) -> should
+    # capture 2/10 = 20% of total actual spend (1000), i.e. above the 10% random rate
+    assert summary["top_decile_pct_of_actual_spend"] == pytest.approx(0.20)
+    assert summary["lift_multiple"] == pytest.approx(2.0)
 
 
 def test_identify_worst_predictions_ranks_by_ape_descending():

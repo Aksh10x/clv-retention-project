@@ -213,6 +213,7 @@ def simulate_campaign_roi(segments: pd.DataFrame) -> dict:
 
 def build_clv_validation(metrics: dict, output_dir: Path) -> dict:
     v = metrics["clv_model"]["validation"]
+    decile = metrics["clv_model"]["decile_lift"]
     return {
         "mae": v["mae"],
         "rmse": v["rmse"],
@@ -227,6 +228,9 @@ def build_clv_validation(metrics: dict, output_dir: Path) -> dict:
             "case, where ranking customers correctly matters more than exact dollar forecasts."
         ),
         "scatter_chart_path": file_uri(output_dir / "plots" / "clv_predicted_vs_actual.png"),
+        "top_decile_pct_of_spend": decile["top_decile_pct_of_actual_spend"],
+        "decile_lift_multiple": decile["lift_multiple"],
+        "decile_chart_path": file_uri(output_dir / "plots" / "clv_decile_lift.png"),
     }
 
 

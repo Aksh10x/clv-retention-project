@@ -240,6 +240,10 @@
     <tr><td>MAPE (nonzero actuals)</td><td class="num">{{ clv_validation.mape | pct_fmt }}</td></tr>
     <tr><td>Median APE (nonzero actuals)</td><td class="num">{{ clv_validation.median_ape | pct_fmt }}</td></tr>
     <tr><td>Spearman rank correlation</td><td class="num">{{ clv_validation.spearman | round(3) }}</td></tr>
+    <tr>
+      <td>Top-decile capture (business metric)</td>
+      <td class="num">{{ clv_validation.top_decile_pct_of_spend | pct_fmt }}</td>
+    </tr>
   </tbody>
 </table>
 <div class="finding-box">
@@ -248,6 +252,17 @@
 </div>
 <img class="chart" src="{{ clv_validation.scatter_chart_path }}">
 <div class="chart-caption">Figure 2. Predicted vs. actual holdout-period spend.</div>
+
+<h4 style="font-size:9.5pt; margin: 10px 0 4px 0;">Decile lift</h4>
+<p>
+  Same rank-quality signal as Spearman, expressed as a business metric: targeting only the
+  top predicted decile (10% of customers) would have captured
+  <strong>{{ clv_validation.top_decile_pct_of_spend | pct_fmt }}</strong> of total actual holdout
+  spend — a <strong>{{ clv_validation.decile_lift_multiple | round(2) }}x</strong> lift over the 10%
+  a random sample of the same size would capture in expectation.
+</p>
+<img class="chart" src="{{ clv_validation.decile_chart_path }}">
+<div class="chart-caption">Figure 2b. % of total actual holdout spend captured, by predicted-CLV decile.</div>
 
 <h3>Churn Model (XGBoost)</h3>
 <table>
