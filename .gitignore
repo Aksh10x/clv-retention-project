@@ -1,0 +1,15 @@
+# Virtual environment
+.venv/
+
+# Raw and processed data (large, regeneratable from data/raw/ via data_prep.py;
+# the raw dataset itself is not redistributed here — see README setup instructions)
+data/raw/
+data/processed/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store

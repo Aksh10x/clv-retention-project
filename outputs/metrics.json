@@ -1,0 +1,223 @@
+{
+  "data_prep": {
+    "raw_rows": 1067371,
+    "cleaned_rows": 802644,
+    "date_range": {
+      "min": "2009-12-01",
+      "max": "2011-12-09"
+    },
+    "cleaning_steps": [
+      {
+        "step": "drop_null_customer_id",
+        "reason": "No customer to attribute the purchase to",
+        "rows_before": 1067371,
+        "rows_dropped": 243007,
+        "rows_after": 824364
+      },
+      {
+        "step": "drop_cancelled_invoices",
+        "reason": "Invoice prefixed 'C' denotes a cancellation, not a completed purchase",
+        "rows_before": 824364,
+        "rows_dropped": 18744,
+        "rows_after": 805620
+      },
+      {
+        "step": "drop_non_product_stock_codes",
+        "reason": "Postage/discount/adjustment/fee entries are not purchased goods",
+        "rows_before": 805620,
+        "rows_dropped": 2913,
+        "rows_after": 802707,
+        "stock_codes_dropped": [
+          "ADJUST",
+          "ADJUST2",
+          "BANK CHARGES",
+          "C2",
+          "D",
+          "DOT",
+          "M",
+          "PADS",
+          "POST"
+        ]
+      },
+      {
+        "step": "drop_low_quantity",
+        "reason": "Quantity < 1 is a return/adjustment, not a purchase",
+        "rows_before": 802707,
+        "rows_dropped": 0,
+        "rows_after": 802707
+      },
+      {
+        "step": "drop_low_price",
+        "reason": "Price < 0.01 is a data error or non-sale line item",
+        "rows_before": 802707,
+        "rows_dropped": 63,
+        "rows_after": 802644
+      }
+    ],
+    "duplicate_rows": {
+      "count": 26055,
+      "pct_of_cleaned_rows": 0.03246146485864219
+    },
+    "split": {
+      "calibration_end": "2011-06-09",
+      "holdout_months": 6,
+      "n_customers_calibration": 4942,
+      "n_customers_holdout": 3482,
+      "n_invoices_calibration": 25999,
+      "n_invoices_holdout": 10605
+    }
+  },
+  "clv_model": {
+    "calibration_customers": 4942,
+    "one_time_buyers": 1609,
+    "independence_check": {
+      "pearson_correlation": 0.1290115957797524,
+      "p_value": 7.627884858036687e-14,
+      "n_repeat_customers": 3333,
+      "warning_threshold": 0.3,
+      "exceeds_threshold": false
+    },
+    "bgnbd_params": {
+      "r": 0.6832994177801727,
+      "alpha": 66.46361262829372,
+      "a": 0.15367750484678433,
+      "b": 3.2841644320704053
+    },
+    "gamma_gamma_params": {
+      "p": 2.3370537713404134,
+      "q": 3.5570643998605997,
+      "v": 454.9584060415951
+    },
+    "clv_horizon_months": 6,
+    "validation_discount_rate": 0.0,
+    "calibration_end": "2011-06-09",
+    "validation": {
+      "n_customers": 4942,
+      "mae": 614.2604761674472,
+      "rmse": 3522.512522139103,
+      "mape_nonzero_actuals": 0.987918236608598,
+      "median_ape_nonzero_actuals": 0.47290393451863133,
+      "pct_customers_excluded_from_mape": 0.4795629299878592,
+      "spearman_correlation": 0.6243042847961372,
+      "spearman_p_value": 0.0,
+      "ape_percentiles": {
+        "p10": 0.0969791966079496,
+        "p25": 0.2542023779779042,
+        "p50": 0.47290393451863133,
+        "p75": 0.7503558644781574,
+        "p90": 1.5821741482348164,
+        "p95": 2.947617074191471,
+        "p99": 8.476258077034004
+      }
+    }
+  },
+  "churn_model": {
+    "churn_threshold_days": 119.0,
+    "churn_threshold_percentile": 90,
+    "n_customers": 4942,
+    "churn_rate": 0.5404694455685957,
+    "train_size": 3953,
+    "test_size": 989,
+    "recency_only_baseline": {
+      "roc_auc": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "confusion_matrix": {
+        "tn": 454,
+        "fp": 0,
+        "fn": 0,
+        "tp": 535
+      }
+    },
+    "non_recency_model": {
+      "roc_auc": 0.9547634731771585,
+      "precision": 0.8852772466539197,
+      "recall": 0.8654205607476636,
+      "f1": 0.8752362948960303,
+      "confusion_matrix": {
+        "tn": 394,
+        "fp": 60,
+        "fn": 72,
+        "tp": 463
+      }
+    },
+    "full_model": {
+      "roc_auc": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "confusion_matrix": {
+        "tn": 454,
+        "fp": 0,
+        "fn": 0,
+        "tp": 535
+      }
+    },
+    "auc_delta_full_vs_recency_only": 0.0,
+    "auc_delta_non_recency_vs_recency_only": -0.045236526822841516,
+    "mean_abs_shap": {
+      "days_since_last_purchase": 4.167755126953125,
+      "purchase_trend": 0.34510862827301025,
+      "frequency": 0.2526741325855255,
+      "T": 0.23076486587524414,
+      "monetary_value": 0.20523732900619507,
+      "inter_purchase_interval_std": 0.11502081155776978
+    },
+    "leakage_diagnostics": {
+      "single_feature_auc": {
+        "frequency": 0.7654843756432953,
+        "T": 0.5224669603524228,
+        "monetary_value": 0.6988739758738525,
+        "purchase_trend": 0.6732718514553914,
+        "inter_purchase_interval_std": 0.5788855037259666
+      },
+      "non_recency_auc_without_purchase_trend": 0.9343529993000946,
+      "short_tenure_mechanical_constraint": {
+        "pct_customers_with_t_below_threshold": 0.10259004451639013,
+        "n_customers_with_t_below_threshold": 507
+      },
+      "note": "No single non-recency feature's solo AUC approaches the combined non-recency AUC, and dropping purchase_trend (the one feature correlated with recency) barely moves it \u2014 evidence the combined result is genuine multi-feature signal, not one feature secretly encoding the label."
+    }
+  },
+  "segmentation": {
+    "n_customers": 4942,
+    "k_candidates": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "inertias": {
+      "2": 12020.884687106227,
+      "3": 8288.548961469627,
+      "4": 6080.83413415464,
+      "5": 5054.545322458037,
+      "6": 4118.5353937098525,
+      "7": 3708.544017612178,
+      "8": 3329.1557313529274
+    },
+    "silhouette_scores": {
+      "2": 0.4623913752904457,
+      "3": 0.4298570239747916,
+      "4": 0.4057828300986054,
+      "5": 0.3864557767657001,
+      "6": 0.380342529532474,
+      "7": 0.35694030652763026,
+      "8": 0.33922084060505514
+    },
+    "chosen_k": 2,
+    "cluster_labels": {
+      "0": "High-Value / Low-Risk",
+      "1": "Low-Value / At-Risk"
+    },
+    "cluster_sizes": {
+      "1": 2551,
+      "0": 2391
+    },
+    "rfm_only_stability_ari": 0.4170518502832466
+  }
+}

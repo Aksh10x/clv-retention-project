@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4;
+    margin: 2.6cm 1.8cm 2.2cm 1.8cm;
+    @bottom-center {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 8pt;
+      color: #888;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 10pt;
+    color: #1f2937;
+    line-height: 1.5;
+  }
+  .page-header {
+    position: fixed;
+    top: -2cm;
+    left: 0;
+    right: 0;
+    height: 1.4cm;
+    border-bottom: 1px solid #d1d5db;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 8pt;
+    color: #6b7280;
+    padding-bottom: 4px;
+  }
+  h1 { font-size: 20pt; color: #0f172a; margin: 0 0 4px 0; }
+  h2 {
+    font-size: 13pt; color: #0f172a; margin: 22px 0 8px 0;
+    border-bottom: 2px solid #1d4ed8; padding-bottom: 4px;
+  }
+  h3 { font-size: 11pt; color: #1e3a8a; margin: 14px 0 6px 0; }
+  p { margin: 6px 0; }
+  .cover {
+    text-align: center;
+    padding-top: 6cm;
+  }
+  .cover .subtitle { font-size: 12pt; color: #4b5563; margin-top: 6px; }
+  .cover .meta { font-size: 9pt; color: #9ca3af; margin-top: 40px; }
+  .section { page-break-inside: avoid; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 14px 0;
+    font-size: 9pt;
+  }
+  th, td {
+    padding: 5px 8px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 600;
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .kpi-row { display: flex; gap: 12px; margin: 10px 0 16px 0; }
+  .kpi-box {
+    flex: 1;
+    background: #f1f5f9;
+    border-left: 3px solid #1d4ed8;
+    padding: 10px 12px;
+  }
+  .kpi-box .label { font-size: 8pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+  .kpi-box .value { font-size: 16pt; color: #0f172a; font-weight: 700; margin-top: 2px; }
+  .narrative {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 12px 14px;
+    border-radius: 4px;
+    font-size: 9.5pt;
+  }
+  .callout {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-left: 5px solid #f59e0b;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 9.5pt;
+  }
+  .callout strong { color: #92400e; }
+  .finding-box {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid #1d4ed8;
+    padding: 10px 14px;
+    margin: 8px 0 14px 0;
+    font-size: 9pt;
+  }
+  .finding-box .title { font-weight: 700; color: #1e3a8a; margin-bottom: 4px; }
+  img.chart { width: 100%; max-width: 100%; margin: 8px 0 4px 0; }
+  .chart-caption { font-size: 8pt; color: #6b7280; text-align: center; margin-bottom: 10px; }
+  .two-col { display: flex; gap: 16px; }
+  .two-col > div { flex: 1; }
+  .action-cell { font-size: 8.5pt; color: #334155; }
+  .badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-size: 8pt;
+    font-weight: 600;
+  }
+  .badge-high { background: #dcfce7; color: #166534; }
+  .badge-low { background: #fee2e2; color: #991b1b; }
+  ul { margin: 6px 0; padding-left: 18px; }
+  li { margin: 3px 0; }
+  .footnote { font-size: 8pt; color: #6b7280; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <span>{{ report_title }}</span>
+  <span>{{ run_name }} &middot; Generated {{ generated_date }}</span>
+</div>
+
+<div class="cover">
+  <h1>{{ report_title }}</h1>
+  <div class="subtitle">Customer Lifetime Value &amp; Retention Intelligence Report</div>
+  <div class="meta">
+    Run: {{ run_name }} &nbsp;&middot;&nbsp; Generated {{ generated_date }}<br>
+    Data: Online Retail II &nbsp;&middot;&nbsp; Calibration period ending {{ methodology.calibration_end }}
+  </div>
+</div>
+
+<div style="page-break-before: always;"></div>
+
+<h2>Executive Summary</h2>
+<div class="kpi-row">
+  <div class="kpi-box">
+    <div class="label">Customers Analyzed</div>
+    <div class="value">{{ n_customers | int_fmt }}</div>
+  </div>
+  <div class="kpi-box">
+    <div class="label">Total Portfolio CLV (6-mo)</div>
+    <div class="value">£{{ total_portfolio_clv | money_fmt }}</div>
+  </div>
+  <div class="kpi-box">
+    <div class="label">Overall Churn Rate</div>
+    <div class="value">{{ overall_churn_rate | pct_fmt }}</div>
+  </div>
+</div>
+<div class="narrative">
+  {{ narrative_summary }}
+</div>
+
+<div class="section">
+<h2>Cohort Breakdown</h2>
+<p>
+  Segmentation converged to <strong>{{ cohorts | length }} cohorts</strong> (K={{ cohorts | length }},
+  chosen by silhouette score), not a hardcoded four-quadrant structure — driven by a
+  <strong>{{ segmentation_validation.clv_churn_correlation | round(2) }}</strong> correlation between
+  predicted CLV and churn probability in this customer base (see Model Validation Appendix for the
+  full silhouette/elbow justification).
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Cohort</th><th class="num">Customers</th><th class="num">% of Base</th>
+      <th class="num">Avg CLV</th><th class="num">Avg Churn Risk</th>
+      <th class="num">% of Portfolio Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in cohorts %}
+    <tr>
+      <td>{{ c.name }}</td>
+      <td class="num">{{ c.n_customers | int_fmt }}</td>
+      <td class="num">{{ c.pct_of_customers | pct_fmt }}</td>
+      <td class="num">£{{ c.avg_clv | money_fmt }}</td>
+      <td class="num">{{ c.avg_churn_risk | pct_fmt }}</td>
+      <td class="num">{{ c.pct_of_portfolio_value | pct_fmt }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<img class="chart" src="{{ cohort_bar_chart_path }}">
+<div class="chart-caption">Figure 1. Total predicted 6-month CLV by cohort.</div>
+{% for c in cohorts %}
+<div class="finding-box">
+  <div class="title">{{ c.name }} — recommended action</div>
+  {{ c.recommended_action }}
+</div>
+{% endfor %}
+</div>
+
+<div class="section">
+<h2>Priority Watchlist</h2>
+<p>
+  Top 20 customers ranked by <strong>expected value at risk</strong>
+  (predicted CLV &times; predicted churn probability) — the customers where retention
+  spend has the largest expected payoff, combining both how much they're worth and how
+  likely they are to leave.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Customer ID</th><th class="num">CLV</th><th class="num">Churn Prob.</th>
+      <th class="num">Days Since Last Purchase</th><th class="num">Value at Risk</th><th>Recommended Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for w in watchlist %}
+    <tr>
+      <td>{{ w.customer_id }}</td>
+      <td class="num">£{{ w.clv | money_fmt }}</td>
+      <td class="num">{{ w.churn_proba | pct_fmt }}</td>
+      <td class="num">{{ w.recency | int_fmt }}</td>
+      <td class="num">£{{ w.value_at_risk | money_fmt }}</td>
+      <td class="action-cell">{{ w.recommended_action }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div style="page-break-before: always;"></div>
+<h2>Model Validation Appendix</h2>
+
+<h3>CLV Model (BG/NBD + Gamma-Gamma)</h3>
+<table>
+  <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+  <tbody>
+    <tr><td>MAE</td><td class="num">£{{ clv_validation.mae | money_fmt }}</td></tr>
+    <tr><td>RMSE</td><td class="num">£{{ clv_validation.rmse | money_fmt }}</td></tr>
+    <tr><td>MAPE (nonzero actuals)</td><td class="num">{{ clv_validation.mape | pct_fmt }}</td></tr>
+    <tr><td>Median APE (nonzero actuals)</td><td class="num">{{ clv_validation.median_ape | pct_fmt }}</td></tr>
+    <tr><td>Spearman rank correlation</td><td class="num">{{ clv_validation.spearman | round(3) }}</td></tr>
+  </tbody>
+</table>
+<div class="finding-box">
+  <div class="title">Why MAPE ≫ median APE</div>
+  {{ clv_validation.mape_note }}
+</div>
+<img class="chart" src="{{ clv_validation.scatter_chart_path }}">
+<div class="chart-caption">Figure 2. Predicted vs. actual holdout-period spend.</div>
+
+<h3>Churn Model (XGBoost)</h3>
+<table>
+  <thead><tr><th>Model</th><th class="num">ROC-AUC</th><th>Interpretation</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Recency-only baseline</td><td class="num">{{ churn_validation.recency_only_auc | round(3) }}</td>
+      <td class="action-cell">Tautological by construction — the churn label is itself a threshold on recency.</td>
+    </tr>
+    <tr>
+      <td>Non-recency features only</td><td class="num">{{ churn_validation.non_recency_auc | round(3) }}</td>
+      <td class="action-cell">The genuine finding: behavioral features predict churn without seeing recency at all.</td>
+    </tr>
+    <tr>
+      <td>Full feature set</td><td class="num">{{ churn_validation.full_auc | round(3) }}</td>
+      <td class="action-cell">Also ~1.0 — dominated by the same recency feature as the baseline.</td>
+    </tr>
+  </tbody>
+</table>
+<h4 style="font-size:9.5pt; margin: 10px 0 4px 0;">SHAP feature importance (full model, mean |SHAP|)</h4>
+<table>
+  <thead><tr><th>Feature</th><th class="num">Mean |SHAP|</th></tr></thead>
+  <tbody>
+    {% for f in churn_validation.shap_ranking %}
+    <tr><td>{{ f.feature }}</td><td class="num">{{ f.value | round(3) }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="finding-box">
+  <div class="title">Residual-leakage check on the 0.955 non-recency AUC</div>
+  <p>Before reporting {{ churn_validation.non_recency_auc | round(3) }} as a real result, two secondary
+  leakage paths were checked directly:</p>
+  <ul>
+    <li><strong>Tenure (T) mechanical constraint:</strong> days-since-last-purchase &le; T always, so
+      T below the {{ churn_validation.churn_threshold_days | int_fmt }}-day threshold guarantees
+      "not churned." True for {{ churn_validation.leakage.pct_short_tenure | pct_fmt }} of customers
+      ({{ churn_validation.leakage.n_short_tenure | int_fmt }}) — but T's own single-feature AUC is only
+      {{ churn_validation.leakage.t_solo_auc | round(3) }}, barely above chance.</li>
+    <li><strong>purchase_trend drop test:</strong> this feature correlates with recency by construction
+      (derived from purchase timing). Dropping it entirely: AUC only falls to
+      {{ churn_validation.leakage.no_trend_auc | round(3) }} (from {{ churn_validation.non_recency_auc | round(3) }}).</li>
+    <li>No single non-recency feature's solo AUC exceeds
+      {{ churn_validation.leakage.max_single_feature_auc | round(3) }}
+      ({{ churn_validation.leakage.max_single_feature_name }}) — the combined result reflects genuine
+      multi-feature signal, not one feature secretly encoding the label.</li>
+  </ul>
+</div>
+<img class="chart" src="{{ churn_validation.shap_chart_path }}">
+<div class="chart-caption">Figure 3. SHAP summary — full churn model.</div>
+
+<div style="page-break-before: always;"></div>
+<h3>Segmentation</h3>
+<p>
+  K={{ segmentation_validation.chosen_k }} chosen by silhouette score
+  ({{ segmentation_validation.silhouette_at_k | round(3) }}), which decreases monotonically across
+  K=2..8 — no local peak at a higher K. This reflects a real property of the data: log(CLV) and churn
+  probability correlate at {{ segmentation_validation.clv_churn_correlation | round(2) }}, acting as one
+  dominant axis rather than four independent quadrants.
+</p>
+<img class="chart" src="{{ segmentation_validation.k_selection_chart_path }}">
+<div class="chart-caption">Figure 4. Elbow (inertia) and silhouette score by K.</div>
+<div class="finding-box">
+  <div class="title">RFM-only stability check</div>
+  Adjusted Rand Index = {{ segmentation_validation.rfm_only_ari | round(3) }} between the full-feature
+  clustering and an RFM-only clustering (same K, same customers). Interpreted directly rather than
+  against a pass/fail bar: meaningfully above 0 (chance agreement) but well below 1 (identical
+  clustering) — CLV and churn probability shift roughly half of customers' cluster assignment relative
+  to RFM alone, indicating they add real information rather than only restating RFM.
+</div>
+<div class="finding-box">
+  <div class="title">Bug caught before shipping</div>
+  Cluster labels were initially derived by comparing each cohort's mean churn probability against the
+  <em>population median</em>, mirroring the CLV-labeling logic. Because the churn classifier is so
+  well-separated, the population median churn probability is itself ~0.98 — so a cohort averaging 97.3%
+  churn probability still fell fractionally under that skewed median and was labeled "Low-Risk." Fixed
+  by comparing against a fixed 0.5 threshold instead, since churn probability (unlike CLV) has a real
+  absolute reference point.
+</div>
+
+<h3>Gamma-Gamma Independence Check</h3>
+<p>
+  Pearson correlation between frequency and monetary value (repeat customers only):
+  <strong>r = {{ independence_check.correlation | round(3) }}</strong>, under the
+  {{ independence_check.threshold }} warning threshold — no caveat needed.
+</p>
+
+<div style="page-break-before: always;"></div>
+<h2>Simulated Campaign ROI</h2>
+<div class="callout">
+  <strong>Illustrative simulation, not a validated campaign result.</strong> No real campaign has been
+  run against this customer base — there is no experimental or historical response data to validate
+  against. This section demonstrates how CLV and churn probability could be used to size and prioritize
+  a retention campaign, under stated assumptions below.
+</div>
+<h3>Stated assumptions</h3>
+<ul>
+  <li>Campaign size: <strong>{{ campaign_roi.n_targets | int_fmt }}</strong> customers contacted
+    (~{{ campaign_roi.pct_of_base | pct_fmt }} of the {{ n_customers | int_fmt }}-customer base).</li>
+  <li>Cost per outreach: <strong>£{{ campaign_roi.cost_per_outreach }}</strong> (e.g. an email/direct-mail
+    retention offer).</li>
+  <li>Assumed retention lift: <strong>{{ campaign_roi.retention_lift | pct_fmt }}</strong> — a targeted
+    customer's churn probability is assumed to fall by this many percentage points as a result of being
+    contacted, applied uniformly to whoever is targeted (a simplification: real intervention effectiveness
+    would vary by customer, and this lift figure is illustrative, not measured).</li>
+  <li>Expected value saved = (targeted customers' total predicted CLV) &times; retention lift.</li>
+</ul>
+<table>
+  <thead>
+    <tr><th>Strategy</th><th class="num">Targets</th><th class="num">Cost</th>
+      <th class="num">Expected Value Saved</th><th class="num">Net ROI</th><th class="num">ROI Multiple</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Recommended</strong> (high-value + high-churn-risk)</td>
+      <td class="num">{{ campaign_roi.n_targets | int_fmt }}</td>
+      <td class="num">£{{ campaign_roi.recommended.cost | money_fmt }}</td>
+      <td class="num">£{{ campaign_roi.recommended.value_saved | money_fmt }}</td>
+      <td class="num">£{{ campaign_roi.recommended.net_roi | money_fmt }}</td>
+      <td class="num">{{ campaign_roi.recommended.roi_multiple | mult_fmt }}</td>
+    </tr>
+    <tr>
+      <td>Random targeting (same size)</td>
+      <td class="num">{{ campaign_roi.n_targets | int_fmt }}</td>
+      <td class="num">£{{ campaign_roi.random.cost | money_fmt }}</td>
+      <td class="num">£{{ campaign_roi.random.value_saved | money_fmt }}</td>
+      <td class="num">£{{ campaign_roi.random.net_roi | money_fmt }}</td>
+      <td class="num">{{ campaign_roi.random.roi_multiple | mult_fmt }}</td>
+    </tr>
+  </tbody>
+</table>
+<p>
+  Recommended targeting produces an estimated
+  <strong>£{{ campaign_roi.uplift_vs_random | money_fmt }}</strong> more expected value saved than random
+  targeting of the same size, purely from prioritizing customers where CLV and churn risk are both
+  high — this uplift is a direct consequence of the targeting rule, not of the (unvalidated) retention
+  lift assumption, which is held identical across both strategies.
+</p>
+
+<div style="page-break-before: always;"></div>
+<h2>Data &amp; Methodology Notes</h2>
+<h3>Dataset</h3>
+<p>
+  Online Retail II (UK online retailer), {{ methodology.date_range }}.
+  {{ methodology.raw_rows | int_fmt }} raw transaction line items &rarr;
+  {{ methodology.cleaned_rows | int_fmt }} after cleaning.
+  Calibration period ends {{ methodology.calibration_end }}; churn/segmentation are derived from
+  calibration-period behavior only.
+</p>
+<h3>Cleaning summary</h3>
+<table>
+  <thead><tr><th>Step</th><th class="num">Rows Dropped</th><th>Reason</th></tr></thead>
+  <tbody>
+    {% for step in methodology.cleaning_steps %}
+    <tr>
+      <td>{{ step.step }}</td>
+      <td class="num">{{ step.rows_dropped | int_fmt }}</td>
+      <td class="action-cell">{{ step.reason }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<h3>Limitations</h3>
+<ul>
+  <li><strong>Null CustomerID exclusion:</strong> {{ methodology.null_customer_pct | pct_fmt }} of raw
+    rows had no CustomerID and were dropped entirely — those purchases are invisible to this entire
+    analysis.</li>
+  <li><strong>Duplicate rows:</strong> {{ methodology.duplicate_pct | pct_fmt }}
+    ({{ methodology.duplicate_count | int_fmt }} rows) of cleaned transactions are exact duplicates of
+    unclear origin (repeat entries vs. export artifact) — retained as-is, since deduping would require an
+    assumption the data doesn't support.</li>
+  <li><strong>Single-country skew:</strong> the dataset is predominantly UK transactions; findings won't
+    generalize to other markets without revalidation.</li>
+  <li><strong>Segmentation reflects a 2-axis structure, not four independent quadrants:</strong>
+    log(CLV) and churn probability correlate at
+    {{ segmentation_validation.clv_churn_correlation | round(2) }} in this customer base, so value and
+    risk move together strongly enough that K-Means finds one dominant axis of separation rather than
+    a "high/low value &times; high/low risk" grid. A future run with a more heterogeneous customer base
+    might not show this pattern.</li>
+</ul>
+
+<p class="footnote">
+  Generated by src/report_generator.py &middot; {{ generated_date }} &middot; run: {{ run_name }}
+</p>
+
+</body>
+</html>
